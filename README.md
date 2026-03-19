@@ -84,7 +84,7 @@ Customer-Churn-Prediction/
 - Encoded categorical variables (Gender, Geography)
 - Scaled numerical features
 - Handled class imbalance using **SMOTE**
-- Saved preprocessing pipeline (`preprocessed.pkl`) for consistent inference
+- Saved preprocessing + model pipeline (`pipeline.pkl`) for consistent inference
 
 ### 2. Model Training & Selection
 
