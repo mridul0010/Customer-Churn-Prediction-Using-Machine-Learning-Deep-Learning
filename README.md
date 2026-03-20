@@ -113,27 +113,24 @@ XGBoost was selected because it:
 
 ## 📊 Model Evaluation Metrics
 
-The final **XGBoost model** demonstrates strong performance across multiple evaluation metrics:
+The final **XGBoost model** demonstrates strong performance across multiple evaluation metrics.
+The app computes these directly from the saved pipeline using the same evaluation logic in [`app.py`](app.py), including an F1-optimized decision threshold:
 
 ### Performance Summary (Test Set)
 
 | Metric | Score | Description |
 |---|---|---|
-| **Accuracy** | 86.62% | Overall prediction correctness |
-| **Precision** | 73.16% | Proportion of correct positive predictions |
-| **Recall** | 57.69% | Ability to identify churned customers |
-| **F1-Score** | 64.51% | Harmonic mean of precision and recall |
-| **AUC-ROC** | 88.90% | Overall model discriminative ability |
+| **Accuracy** | 86.09% | Overall prediction correctness |
+| **Precision** | 65.27% | Proportion of correct positive predictions |
+| **Recall** | 73.24% | Ability to identify churned customers |
+| **F1-Score** | 69.02% | Harmonic mean of precision and recall |
+| **AUC-ROC** | 90.53% | Overall model discriminative ability |
+| **Best Threshold** | 0.32 | Probability cutoff selected to maximize F1-score |
 
-### F1-Optimized Threshold Performance
+### F1-Optimized Threshold Strategy
 
-The model uses a **dynamically optimized decision threshold (0.32)** to maximize F1-score on validation data:
-
-| Metric | Score |
-|---|---|
-| **Accuracy** | 86.09% |
-| **F1-Score** | 69.02% |
-| **AUC-ROC** | 90.53% |
+The model uses a **dynamically optimized decision threshold (0.32)** to maximize F1-score on validation data.
+Predictions with churn probability **≥ 0.32** are classified as churn, improving the precision-recall balance for this imbalanced problem.
 
 > ⚠️ Given the imbalanced nature of churn prediction, **accuracy was not used as the sole decision metric**. The model prioritizes recall and F1-score to ensure effective identification of at-risk customers.
 
