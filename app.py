@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import pickle
+import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 import shap
@@ -32,98 +33,73 @@ def load_pipeline():
 # Load resource once
 pipeline = load_pipeline()
 
+@st.cache_data
+def load_dataset():
+    df = pd.read_csv("train.csv")
+    return df.drop(columns=["id", "CustomerId", "Surname"])
 
-@st.cache_resource
-def load_model_metrics(default_threshold=0.5):
-    """
-    Recompute the notebook's F1-optimized threshold using train.csv,
-    and calculate actual model performance metrics.
-    """
-    try:
-        df = pd.read_csv("train.csv")
-        df = df.drop(columns=["id", "CustomerId", "Surname"])
-
-        X = df.drop(columns="Exited")
-        y = df["Exited"]
-
-        _, X_valid, _, y_valid = train_test_split(
-            X,
-            y,
-            test_size=0.2,
-            random_state=42,
-            stratify=y,
-        )
-
-        y_valid_proba = pipeline.predict_proba(X_valid)[:, 1]
-        threshold_grid = np.linspace(0.2, 0.8, 61)
-        best_t = max(
-            threshold_grid,
-            key=lambda t: f1_score(y_valid, (y_valid_proba >= t).astype(int)),
-        )
-        
-        y_pred = (y_valid_proba >= best_t).astype(int)
-        return {
-            "threshold": float(best_t),
-            "accuracy": accuracy_score(y_valid, y_pred),
-            "f1": f1_score(y_valid, y_pred),
-            "auc": roc_auc_score(y_valid, y_valid_proba)
-        }
-    except Exception:
-        return {
-            "threshold": float(default_threshold),
-            "accuracy": 0.0,
-            "f1": 0.0,
-            "auc": 0.0
-        }
-
-
-model_metrics = load_model_metrics()
-best_threshold = model_metrics["threshold"]
 
 @st.cache_data
-def load_and_prepare_data():
-    """Loads and prepares data for evaluation."""
-    try:
-        df = pd.read_csv("train.csv")
-        df = df.drop(columns=["id", "CustomerId", "Surname"])
-        
-        X = df.drop(columns="Exited")
-        y = df["Exited"]
-        
-        X_train, X_test, y_train, y_test = train_test_split(
-            X, y, test_size=0.2, random_state=42
-        )
-        
-        return X_train, X_test, y_train, y_test
-    except Exception as e:
-        st.error(f"Error loading evaluation data: {e}")
-        st.stop()
+def get_eval_split(df):
+    x = df.drop(columns="Exited")
+    y = df["Exited"]
+    return train_test_split(x, y, test_size=0.2, random_state=42, stratify=y)
 
 
-def evaluate_model_performance(model_pipeline, x_eval, y_eval):
-    """Compute model performance metrics and outputs for the evaluation split."""
-    y_pred = model_pipeline.predict(x_eval)
-    y_pred_proba = model_pipeline.predict_proba(x_eval)[:, 1]
-    
-    accuracy = accuracy_score(y_eval, y_pred)
-    precision = precision_score(y_eval, y_pred)
-    recall = recall_score(y_eval, y_pred)
-    f1 = f1_score(y_eval, y_pred)
-    auc = roc_auc_score(y_eval, y_pred_proba)
-    
-    cm = confusion_matrix(y_eval, y_pred)
-    
-    return {
-        'accuracy': accuracy,
-        'precision': precision,
-        'recall': recall,
-        'f1': f1,
-        'auc': auc,
-        'y_pred': y_pred,
-        'y_pred_proba': y_pred_proba,
-        'cm': cm,
-        'y_eval': y_eval
+@st.cache_data
+def optimize_threshold(y_true, y_proba):
+    grid = np.linspace(0.2, 0.8, 61)
+    best_t = max(grid, key=lambda t: f1_score(y_true, (y_proba >= t).astype(int)))
+    return float(best_t)
+
+
+@st.cache_data
+def evaluate_pipeline(_pipeline, x_test, y_test):
+    y_proba = _pipeline.predict_proba(x_test)[:, 1]
+    best_threshold = optimize_threshold(y_test, y_proba)
+    y_pred = (y_proba >= best_threshold).astype(int)
+
+    metrics = {
+        "threshold": best_threshold,
+        "accuracy": accuracy_score(y_test, y_pred),
+        "precision": precision_score(y_test, y_pred, zero_division=0),
+        "recall": recall_score(y_test, y_pred, zero_division=0),
+        "f1": f1_score(y_test, y_pred, zero_division=0),
+        "auc": roc_auc_score(y_test, y_proba),
+        "y_true": y_test,
+        "y_pred": y_pred,
+        "y_proba": y_proba,
+        "cm": confusion_matrix(y_test, y_pred),
     }
+    return metrics
+
+
+@st.cache_data
+def get_model_metrics(_pipeline):
+    df = load_dataset()
+    _, x_test, _, y_test = get_eval_split(df)
+    return evaluate_pipeline(_pipeline, x_test, y_test)
+
+
+def format_input_row(payload):
+    expected_order = [
+        "CreditScore",
+        "Geography",
+        "Gender",
+        "Age",
+        "Tenure",
+        "Balance",
+        "NumOfProducts",
+        "HasCrCard",
+        "IsActiveMember",
+        "EstimatedSalary",
+    ]
+    frame = pd.DataFrame([payload])
+    return frame[expected_order]
+
+
+model_metrics = get_model_metrics(pipeline)
+best_threshold = model_metrics["threshold"]
 
 # --- Prediction Function ---
 
@@ -132,19 +108,7 @@ def predict_churn(data):
     Takes a dictionary of input data, converts it to a DataFrame, 
     and uses the pipeline to predict churn probability.
     """
-    # 1. Create DataFrame from input
-    input_df = pd.DataFrame([data])
-    
-    # Define the exact column order expected by the pipeline during training
-    # Based on the training notebook, the feature order is:
-    expected_feature_order = [
-        'CreditScore', 'Geography', 'Gender', 'Age', 'Tenure', 
-        'Balance', 'NumOfProducts', 'HasCrCard', 'IsActiveMember', 
-        'EstimatedSalary'
-    ]
-    
-    # Select and reorder columns to match the pipeline's expectation
-    ordered_input_df = input_df[expected_feature_order]
+    ordered_input_df = format_input_row(data)
 
     # 2. Prediction
     # The pipeline handles preprocessing automatically.
@@ -369,33 +333,37 @@ elif page == "Model Performance":
     """)
 
     # --- Load Resources ---
-    _, X_test, _, y_test = load_and_prepare_data()
-    perf_metrics = evaluate_model_performance(pipeline, X_test, y_test)
+    df = load_dataset()
+    _, X_test, _, y_test = get_eval_split(df)
+    perf_metrics = evaluate_pipeline(pipeline, X_test, y_test)
 
     # --- Main Metrics Row ---
     st.header("🎯 Key Performance Metrics")
 
-    colbg1, colbg2, colbg3, colbg4, colbg5 = st.columns(5)
+    colbg1, colbg2, colbg3, colbg4, colbg5, colbg6 = st.columns(6)
 
     with colbg1:
-        st.metric("Accuracy", f"{perf_metrics['accuracy']:.4f}", 
+        st.metric("Accuracy", f"{perf_metrics['accuracy']:.3f}", 
                   help="Proportion of correct predictions out of total predictions")
 
     with colbg2:
-        st.metric("Precision", f"{perf_metrics['precision']:.4f}",
+        st.metric("Precision", f"{perf_metrics['precision']:.3f}",
                   help="Proportion of true positives among all positive predictions")
 
     with colbg3:
-        st.metric("Recall", f"{perf_metrics['recall']:.4f}",
+        st.metric("Recall", f"{perf_metrics['recall']:.3f}",
                   help="Proportion of true positives among all actual positives")
 
     with colbg4:
-        st.metric("F1-Score", f"{perf_metrics['f1']:.4f}",
+        st.metric("F1-Score", f"{perf_metrics['f1']:.3f}",
                   help="Harmonic mean of precision and recall")
 
     with colbg5:
-        st.metric("AUC-ROC", f"{perf_metrics['auc']:.4f}",
+        st.metric("AUC-ROC", f"{perf_metrics['auc']:.3f}",
                   help="Area under the ROC curve - overall model quality")
+
+    with colbg6:
+        st.metric("Best Threshold", f"{best_threshold:.2f}")
 
     st.markdown("---")
 
@@ -408,7 +376,7 @@ elif page == "Model Performance":
     with col_viz1:
         st.subheader("ROC Curve")
         
-        fpr, tpr, _ = roc_curve(perf_metrics['y_eval'], perf_metrics['y_pred_proba'])
+        fpr, tpr, _ = roc_curve(perf_metrics['y_true'], perf_metrics['y_proba'])
         
         fig_roc = go.Figure()
         
@@ -465,7 +433,7 @@ elif page == "Model Performance":
 
     report_df = pd.DataFrame(
         classification_report(
-            perf_metrics['y_eval'],
+            perf_metrics['y_true'],
             perf_metrics['y_pred'],
             target_names=['No Churn', 'Churn'],
             output_dict=True,
@@ -534,6 +502,8 @@ elif page == "Model Performance":
             # Create SHAP explainer
             explainer = shap.TreeExplainer(xgb_model)
             shap_values = explainer.shap_values(X_test_transformed)
+            if isinstance(shap_values, list):
+                shap_values = shap_values[1] if len(shap_values) > 1 else shap_values[0]
             
             # Get feature names
             feature_names = preprocessing.get_feature_names_out()
@@ -557,10 +527,22 @@ elif page == "Model Performance":
             
             fig_shap.update_layout(height=500, showlegend=False)
             st.plotly_chart(fig_shap, use_container_width=True)
+
+            st.subheader("SHAP Beeswarm")
+            fig_swarm, _ = plt.subplots(figsize=(9, 5))
+            shap.summary_plot(
+                shap_values,
+                X_test_transformed,
+                feature_names=feature_names,
+                max_display=12,
+                show=False,
+            )
+            st.pyplot(fig_swarm, use_container_width=True, clear_figure=True)
             
             st.info("""
             **SHAP Interpretation:** 
             - Features with higher mean absolute SHAP values have a greater impact on model predictions.
+            - The beeswarm view shows direction: points to the right push toward churn, points to the left reduce churn risk.
             - These features are the most important drivers of churn decisions.
             """)
 
@@ -592,11 +574,13 @@ elif page == "Model Performance":
 
     st.markdown("---")
 
-    st.subheader("📊 Threshold Optimization")
-    st.markdown("""
-    The model uses a dynamically optimized decision threshold to maximize F1-score on validation data.
-    This threshold is recalculated using the training data to ensure optimal churn detection.
-    """)
+    st.subheader("📊 F1-Optimized Threshold Performance")
+    st.markdown(
+        f"""
+    The model uses a dynamically optimized decision threshold (**{best_threshold:.2f}**) to maximize F1-score on validation data.
+    Predictions with churn probability >= **{best_threshold:.2f}** are classified as churn, improving balance between precision and recall.
+    """
+    )
 
     # Footer
     st.markdown("---")
