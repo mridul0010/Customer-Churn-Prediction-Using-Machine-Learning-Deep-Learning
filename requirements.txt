@@ -9,3 +9,4 @@ imbalanced-learn
 streamlit
 pickle-mixin
 plotly
+altair==4.2.2
