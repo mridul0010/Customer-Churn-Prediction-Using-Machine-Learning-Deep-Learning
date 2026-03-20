@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 from xgboost import XGBClassifier  # Required for unpickling the XGBClassifier inside the pipeline
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, accuracy_score, roc_auc_score
 
 # --- 1. Load the Pipeline (Cached for performance) ---
 
@@ -28,10 +28,10 @@ pipeline = load_pipeline()
 
 
 @st.cache_resource
-def load_best_threshold(default_threshold=0.5):
+def load_model_metrics(default_threshold=0.5):
     """
-    Recompute the notebook's F1-optimized threshold using train.csv.
-    Falls back to 0.5 if training data is unavailable.
+    Recompute the notebook's F1-optimized threshold using train.csv,
+    and calculate actual model performance metrics.
     """
     try:
         df = pd.read_csv("train.csv")
@@ -50,16 +50,29 @@ def load_best_threshold(default_threshold=0.5):
 
         y_valid_proba = pipeline.predict_proba(X_valid)[:, 1]
         threshold_grid = np.linspace(0.2, 0.8, 61)
-        best_threshold = max(
+        best_t = max(
             threshold_grid,
             key=lambda t: f1_score(y_valid, (y_valid_proba >= t).astype(int)),
         )
-        return float(best_threshold)
+        
+        y_pred = (y_valid_proba >= best_t).astype(int)
+        return {
+            "threshold": float(best_t),
+            "accuracy": accuracy_score(y_valid, y_pred),
+            "f1": f1_score(y_valid, y_pred),
+            "auc": roc_auc_score(y_valid, y_valid_proba)
+        }
     except Exception:
-        return float(default_threshold)
+        return {
+            "threshold": float(default_threshold),
+            "accuracy": 0.0,
+            "f1": 0.0,
+            "auc": 0.0
+        }
 
 
-best_threshold = load_best_threshold()
+model_metrics = load_model_metrics()
+best_threshold = model_metrics["threshold"]
 
 # --- Prediction Function ---
 
@@ -105,7 +118,7 @@ st.caption(f"Model decision threshold (from training workflow): {best_threshold:
 
 # Sidebar for Input Features
 with st.sidebar:
-    st.header("🎯 Customer Profile Inputs")
+    st.header("🎯 Churn Prediction")
     st.markdown("---")
     
     # --- Group 1: Demographics ---
@@ -141,6 +154,14 @@ with st.sidebar:
     
     st.markdown("---")
     predict_button = st.button("🚀 Predict Churn Risk", type="primary", use_container_width=True)
+
+    st.markdown("---")
+    st.subheader("📊 Model Performance")
+    if model_metrics["accuracy"] > 0:
+        st.caption(f"**Accuracy:** {model_metrics['accuracy']:.2%}")
+        st.caption(f"**F1 Score:** {model_metrics['f1']:.2%}")
+        st.caption(f"**ROC-AUC:** {model_metrics['auc']:.2%}")
+    st.caption(f"**Cutoff:** {best_threshold:.2f}")
 
 
 # --- Main Content/Output ---
