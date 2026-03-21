@@ -7,11 +7,60 @@ import plotly.graph_objects as go
 import plotly.express as px
 import shap
 from xgboost import XGBClassifier  # Required for unpickling the XGBClassifier inside the pipeline
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import OrdinalEncoder
 from sklearn.metrics import (
     accuracy_score, precision_score, recall_score, f1_score,
     roc_auc_score, roc_curve, confusion_matrix, classification_report
 )
+
+class FeatureEngineering(BaseEstimator , TransformerMixin):
+    def __init__(self):
+        pass
+    
+    def fit(self , X , y=None):
+        return self
+
+    def transform(self , X):
+        X = X.copy()
+
+        # Balance Activity
+        X['Balance_Active'] = ((X['Balance'] > 0) & (X['IsActiveMember'] == 1)).astype(int)
+
+        # Zero Balance Flag
+        X["Zero_Balance"] = (X['Balance'] == 0).astype(int)
+
+        # Product Per tenure 
+        X["Product_Per_tenure"] = round(X['NumOfProducts']/(X["Tenure"]+1) , 3)
+
+        # Age Group
+        X["Age_Group"] = pd.cut(
+            X["Age"],
+            bins=[18, 25, 35, 45, 60, 92],
+            labels=["18-25", "26-35", "36-45", "46-60", "60+"],
+            include_lowest=True
+        )
+
+        # Senior Citizen 
+        X["IsSenior"] = (X["Age"] > 60).astype(int)
+        
+        # Multi Product Flag
+        X["has_Multiple_Products"] = (X["NumOfProducts"] > 1).astype(int)
+
+        # Credit Card + Activity
+        X["Card_Active"] = ((X['HasCrCard'] == 1) & (X["IsActiveMember"])).astype(int)
+        
+
+        # New vs old Customer 
+        X["Customer_Age"] = pd.cut(
+            X['Tenure'],
+            bins = [0 , 2 , 5 , 10],
+            labels=["New" , "Mid" , "Old"],
+            include_lowest=True
+        )
+    
+        return X
 
 # --- 1. Load the Pipeline (Cached for performance) ---
 
@@ -22,6 +71,14 @@ def load_pipeline():
         # Load the complete pipeline (Preprocessor + XGBoost Model)
         with open('pipeline.pkl', 'rb') as file:
             pipeline = pickle.load(file)
+            
+        # Robustly handle any unexpected feature mappings when making a single row prediction
+        transformer = pipeline.named_steps.get("preprocessing", None)
+        if transformer is not None and hasattr(transformer, "named_transformers_"):
+            ord_encoder = transformer.named_transformers_.get("ord", None)
+            if isinstance(ord_encoder, OrdinalEncoder):
+                ord_encoder.set_params(handle_unknown="use_encoded_value", unknown_value=-1)
+                    
         return pipeline
     except FileNotFoundError:
         st.error("Error: 'pipeline.pkl' not found. Please ensure the file is uploaded to the directory.")
@@ -48,7 +105,8 @@ def get_eval_split(df):
 
 @st.cache_data
 def optimize_threshold(y_true, y_proba):
-    grid = np.linspace(0.2, 0.8, 61)
+    # Match notebook threshold search strategy
+    grid = np.linspace(0.2, 0.8, 62)
     best_t = max(grid, key=lambda t: f1_score(y_true, (y_proba >= t).astype(int)))
     return float(best_t)
 
@@ -363,7 +421,7 @@ elif page == "Model Performance":
                   help="Area under the ROC curve - overall model quality")
 
     with colbg6:
-        st.metric("Best Threshold", f"{best_threshold:.2f}")
+        st.metric("Best Threshold", f"{perf_metrics['threshold']:.3f}")
 
     st.markdown("---")
 
@@ -492,12 +550,14 @@ elif page == "Model Performance":
 
     try:
         with st.spinner("Computing SHAP feature importance..."):
-            # Get preprocessing transformer and model
+            # Get feature engineering, preprocessing transformer, and model
+            feature_engineering = pipeline.named_steps['feature_engineering']
             preprocessing = pipeline.named_steps['preprocessing']
             xgb_model = pipeline.named_steps['model']
             
-            # Transform test data
-            X_test_transformed = preprocessing.transform(X_test)
+            # Match training pipeline order: feature engineering -> preprocessing
+            X_test_fe = feature_engineering.transform(X_test)
+            X_test_transformed = preprocessing.transform(X_test_fe)
             
             # Create SHAP explainer
             explainer = shap.TreeExplainer(xgb_model)
