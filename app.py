@@ -510,41 +510,6 @@ elif page == "Model Performance":
 
     st.markdown("---")
 
-    # --- Model Architecture & Configuration ---
-    st.header("🏗️ Model Architecture")
-
-    with st.expander("View Model Configuration", expanded=False):
-        model_info = {
-            "Model Type": "XGBoost Classifier with SMOTE & Feature Preprocessing",
-            "Pipeline Steps": [
-                "1. ColumnTransformer (OneHotEncoder for categorical, passthrough for numerical)",
-                "2. SMOTE (Synthetic Minority Oversampling)",
-                "3. XGBoost Classifier"
-            ],
-            "XGBoost Hyperparameters": {
-                "objective": "binary:logistic",
-                "eval_metric": "auc",
-                "tree_method": "hist",
-                "random_state": 42
-            },
-            "Training Data Split": "80% training, 20% validation",
-            "Class Balance": "Applied SMOTE to handle imbalanced classes"
-        }
-        
-        for key, value in model_info.items():
-            st.write(f"**{key}:**")
-            if isinstance(value, list):
-                for item in value:
-                    st.write(f"  • {item}")
-            elif isinstance(value, dict):
-                for sub_key, sub_value in value.items():
-                    st.write(f"  • {sub_key}: {sub_value}")
-            else:
-                st.write(f"  {value}")
-            st.write("")
-
-    st.markdown("---")
-
     # --- SHAP Feature Importance ---
     st.header("🔍 Feature Importance (SHAP Analysis)")
 
