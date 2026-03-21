@@ -550,23 +550,34 @@ elif page == "Model Performance":
 
     try:
         with st.spinner("Computing SHAP feature importance..."):
-            # Get feature engineering, preprocessing transformer, and model
-            feature_engineering = pipeline.named_steps['feature_engineering']
-            preprocessing = pipeline.named_steps['preprocessing']
-            xgb_model = pipeline.named_steps['model']
-            
-            # Match training pipeline order: feature engineering -> preprocessing
-            X_test_fe = feature_engineering.transform(X_test)
-            X_test_transformed = preprocessing.transform(X_test_fe)
+            # Handle different deployed pipeline structures safely
+            named_steps = getattr(pipeline, "named_steps", {})
+            feature_engineering = named_steps.get("feature_engineering")
+            preprocessing = named_steps.get("preprocessing")
+            xgb_model = named_steps.get("model", pipeline)
+
+            X_shap_input = X_test.copy()
+            if feature_engineering is not None:
+                X_shap_input = feature_engineering.transform(X_shap_input)
+
+            if preprocessing is not None:
+                X_test_transformed = preprocessing.transform(X_shap_input)
+                try:
+                    feature_names = preprocessing.get_feature_names_out()
+                except Exception:
+                    feature_names = [f"feature_{i}" for i in range(X_test_transformed.shape[1])]
+            else:
+                X_test_transformed = X_shap_input
+                if hasattr(X_test_transformed, "columns"):
+                    feature_names = X_test_transformed.columns.to_list()
+                else:
+                    feature_names = [f"feature_{i}" for i in range(X_test_transformed.shape[1])]
             
             # Create SHAP explainer
             explainer = shap.TreeExplainer(xgb_model)
             shap_values = explainer.shap_values(X_test_transformed)
             if isinstance(shap_values, list):
                 shap_values = shap_values[1] if len(shap_values) > 1 else shap_values[0]
-            
-            # Get feature names
-            feature_names = preprocessing.get_feature_names_out()
             
             # Calculate mean absolute SHAP values for each feature
             mean_abs_shap = np.abs(shap_values).mean(axis=0)
