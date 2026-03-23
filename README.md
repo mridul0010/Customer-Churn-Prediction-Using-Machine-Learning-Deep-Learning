@@ -24,6 +24,7 @@
 - [Problem Statement](#-problem-statement)
 - [Project Structure](#-project-structure)
 - [Model Development Workflow](#-model-development-workflow)
+- [Analytics Dashboard](#-analytics-dashboard)
 - [Model Evaluation Metrics](#-model-evaluation-metrics)
 - [Model Explainability (SHAP)](#-model-explainability-shap)
 - [Tech Stack](#%EF%B8%8F-tech-stack)
@@ -111,10 +112,42 @@ XGBoost was selected because it:
 
 ---
 
+## 📊 Analytics Dashboard
+
+The live app includes a **Data Analytics** page that helps explore churn patterns before making predictions. It mirrors the insights visible at
+[customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app](https://customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app/) and is driven directly from `train.csv`.
+
+### Filters & KPI Tiles
+
+- **Filters:** Geography, Gender, Age Group, and Number of Products
+- **KPI tiles:** Total Customers, Active Members, Churned Customers, Churn Rate
+
+### Analytics Tabs (In-App)
+
+| Tab | What it shows |
+|---|---|
+| **Data Overview** | Distribution of credit score, age, balance, salary, tenure |
+| **Geographic** | Churn rate by country/region |
+| **Demographic** | Gender and age-group churn analysis |
+| **Engagement** | Tenure & activity status impact on churn |
+| **Products** | Product count vs churn + balance insights |
+| **Correlation** | Feature correlation heatmap |
+| **Strategy** | Actionable retention recommendations |
+
+### Highlighted Insights (from the app)
+
+- Germany shows the **highest churn risk** among geographies.
+- **Inactive members** churn far more than active members.
+- Customers aged **36–60** show elevated churn rates.
+- Customers with **2 products** appear most stable; 1 or 3+ products show higher churn.
+- High-balance customers require targeted retention to avoid churn.
+
+---
+
 ## 📊 Model Evaluation Metrics
 
 The final **XGBoost model** demonstrates strong performance across multiple evaluation metrics.
-The app computes these directly from the saved pipeline using the same evaluation logic in [`app.py`](app.py), including an F1-optimized decision threshold:
+The app computes these directly from the saved pipeline using an **80/20 stratified split** and the same evaluation logic in [`app.py`](app.py), including an F1-optimized decision threshold:
 
 ### Performance Summary (Test Set)
 
@@ -134,6 +167,14 @@ Predictions with churn probability **≥ 0.32** are classified as churn, improvi
 
 > ⚠️ Given the imbalanced nature of churn prediction, **accuracy was not used as the sole decision metric**. The model prioritizes recall and F1-score to ensure effective identification of at-risk customers.
 
+### Performance Dashboard (In-App)
+
+The **Model Performance** page visualizes the same evaluation outputs displayed in the live app:
+
+- ROC curve with AUC score
+- Confusion matrix heatmap
+- Classification report (precision/recall/F1 per class)
+
 ---
 
 ## 🔍 Model Explainability (SHAP)
@@ -143,6 +184,7 @@ To improve transparency and business trust, **SHAP (SHapley Additive exPlanation
 - Identify the most influential features driving churn
 - Explain individual predictions
 - Support data-driven business decisions
+- Visualize feature impact with **bar charts** and **beeswarm plots**
 
 This highlights the importance of **interpretability in real-world ML systems**.
 
@@ -204,6 +246,7 @@ This highlights the importance of **interpretability in real-world ML systems**.
    - **Churn probability** (in %)
    - **Risk level** (Low / Moderate / High)
    - **Data-driven recommendations** for action
+4. Explore the **Data Analytics** and **Model Performance** pages to understand churn drivers and model behavior
 
 ---
 
@@ -246,14 +289,15 @@ This highlights the importance of **interpretability in real-world ML systems**.
 - Highlights handling of **imbalanced classification problems**
 - Balances **ML performance, interpretability, and engineering best practices**
 - Shows when deep learning is _not_ the optimal solution for tabular data
+- Provides a self-serve **analytics dashboard** for churn insights
 
 ---
 
 ## 🔮 Future Improvements
 
-- [ ] Implement model explainability dashboard
+- [ ] Add automated model monitoring and data drift alerts
 - [ ] Extend dataset with behavioral transaction data
-- [ ] Deploy app on Streamlit Cloud or AWS EC2
+- [ ] Explore cost-sensitive learning or calibrated probability outputs
 
 ---
 
