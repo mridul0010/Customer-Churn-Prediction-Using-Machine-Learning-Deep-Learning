@@ -160,7 +160,6 @@ The app computes these directly from the saved pipeline using an **80/20 stratif
 | **AUC-ROC** | 88.80% | Overall model discriminative ability |
 | **Best Threshold** | 0.515 | Probability cutoff selected to maximize F1-score |
 
-<img width="1896" alt="Model Performance & Evaluation" src="https://github.com/user-attachments/assets/810330f3-5279-4b3e-a712-98d38a76eb8f" />
 
 ### F1-Optimized Threshold Strategy
 
