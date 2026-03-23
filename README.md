@@ -214,6 +214,14 @@ This highlights the importance of **interpretability in real-world ML systems**.
 
 <br>
 
+<img width="1884" height="1058" alt="image" src="https://github.com/user-attachments/assets/60b0d0fc-f5cc-46e3-9be2-12ab160e224b" />
+
+<img width="1893" height="950" alt="image" src="https://github.com/user-attachments/assets/d1bc87ae-8130-4103-b0c0-bb62b93f91ba" />
+
+<img width="1919" height="978" alt="image" src="https://github.com/user-attachments/assets/5cad3f7f-aabe-4921-8a03-41b13929e2b7" />
+
+<img width="1890" height="983" alt="image" src="https://github.com/user-attachments/assets/a958e238-e73a-44d8-8708-881614073e8c" />
+
 <img width="1848" alt="App Overview" src="https://github.com/user-attachments/assets/add4d33f-75fb-4cef-a4fc-8680218178aa" />
 
 <img width="1908" alt="Prediction Results" src="https://github.com/user-attachments/assets/14ff7043-e82d-4c5d-ae70-cc33f2d7a08d" />
@@ -221,6 +229,12 @@ This highlights the importance of **interpretability in real-world ML systems**.
 <img width="1919" alt="SHAP Analysis" src="https://github.com/user-attachments/assets/400de439-eec3-4f78-a84f-e50f7ad884fe" />
 
 <img width="1919" alt="Feature Details" src="https://github.com/user-attachments/assets/519a4be4-8101-41f2-b2dd-1124600d9eb1" />
+
+<img width="1866" height="978" alt="image" src="https://github.com/user-attachments/assets/e8989108-3b02-4bb8-9505-f86c7b9f91ff" />
+
+<img width="1827" height="735" alt="image" src="https://github.com/user-attachments/assets/e63b9f5b-e941-4e3d-8917-653c8ce92632" />
+
+
 
 </details>
 
