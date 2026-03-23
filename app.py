@@ -185,9 +185,545 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
+# ── Data Loading for Analytics Page ──────────────────────────────────────────
+
+@st.cache_data
+def load_analysis_data():
+    df = pd.read_csv("train.csv")
+    df.drop(columns=["id", "CustomerId", "Surname"], inplace=True)
+    
+    df["Age_Group"] = pd.cut(
+        df["Age"],
+        bins=[18, 25, 35, 45, 60, 92],
+        labels=["18-25", "26-35", "36-45", "46-60", "60+"],
+        include_lowest=True
+    )
+    
+    df['Tenure_Group'] = pd.cut(
+        df['Tenure'],
+        bins=[0, 2, 4, 6, 8, 10],
+        labels=["0-2", "2-4", "4-6", "6-8", "8-10"],
+        include_lowest=True
+    )
+    
+    df['Cred_Score_Segment'] = pd.cut(
+        df['CreditScore'],
+        bins=[350, 516, 682, 850],
+        labels=["Restricted", "Standard", "Premium"]
+    )
+    
+    return df
+
+analysis_df = load_analysis_data()
+
 st.sidebar.title("🧭 Navigation")
-page = st.sidebar.radio("Go to", ["Churn Predictor", "Model Performance"])
+page = st.sidebar.radio("Go to", ["📊 Data Analytics", "Churn Predictor", "Model Performance"])
 st.sidebar.markdown("---")
+
+# ── Page: Data Analytics ──────────────────────────────────────────────────────
+
+if page == "📊 Data Analytics":
+    st.title("🏦 Bank Customer Churn Analysis Dashboard")
+    
+    # Sidebar Filters
+    st.sidebar.title("🔍 Filters")
+    
+    selected_geography = st.sidebar.multiselect(
+        "Geography", analysis_df["Geography"].unique(), default=analysis_df["Geography"].unique()
+    )
+    selected_gender = st.sidebar.multiselect(
+        "Gender", analysis_df["Gender"].unique(), default=analysis_df["Gender"].unique()
+    )
+    selected_age_group = st.sidebar.multiselect(
+        "Age Group", analysis_df["Age_Group"].cat.categories.tolist(), default=analysis_df["Age_Group"].cat.categories.tolist()
+    )
+    selected_products = st.sidebar.multiselect(
+        "Number of Products", sorted(analysis_df["NumOfProducts"].unique()), default=sorted(analysis_df["NumOfProducts"].unique())
+    )
+    
+    filtered = analysis_df[
+        (analysis_df["Geography"].isin(selected_geography))
+        & (analysis_df["Gender"].isin(selected_gender))
+        & (analysis_df["Age_Group"].isin(selected_age_group))
+        & (analysis_df["NumOfProducts"].isin(selected_products))
+    ]
+    
+    # Header Metrics
+    total_customers = len(filtered)
+    total_active = (filtered['IsActiveMember'] == 1).sum()
+    total_churned = (filtered['Exited'] == 1).sum()
+    churn_rate = round(total_churned / total_customers * 100, 2) if total_customers > 0 else 0
+    
+    col1, col2, col3, col4 = st.columns(4)
+    col1.metric("Total Customers", f"{total_customers:,}")
+    col2.metric("Active Members", f"{total_active:,}")
+    col3.metric("Churned Customers", f"{total_churned:,}")
+    col4.metric("Churn Rate", f"{churn_rate:.2f}%")
+    
+    # Tabs
+    tab1, tab2, tab3, tab4, tab5, tab6, tab7 = st.tabs([
+        "📈 Data Overview", "🌍 Geographic", "🚻 Demographic",
+        "⚡ Engagement", "💳 Products", "📊 Correlation", "📋 Strategy"
+    ])
+    
+    # Tab 1: Data Overview
+    with tab1:
+        st.subheader("📈 Data Overview & Feature Distribution")
+        
+        c1, c2, c3 = st.columns(3)
+        
+        with c1:
+            fig = px.box(filtered['CreditScore'], labels={'value': 'Credit Score'}, title="Credit Score Distribution")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c2:
+            fig = px.box(filtered['Age'], labels={'value': 'Age'}, title="Age Distribution")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c3:
+            fig = px.box(filtered['Balance'], labels={'value': 'Balance'}, title="Account Balance Distribution")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        c4, c5, c6 = st.columns(3)
+        
+        with c4:
+            fig = px.bar(filtered['Geography'].value_counts().reset_index(), 
+                        x='Geography', y='count', color='Geography',
+                        title="Customers by Geography")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c5:
+            fig = px.bar(filtered['Gender'].value_counts().reset_index(), 
+                        x='Gender', y='count', color='Gender',
+                        title="Customers by Gender")
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c6:
+            churn_dist = filtered['Exited'].value_counts().reset_index()
+            churn_dist['Exited'] = churn_dist['Exited'].map({0: 'Retained', 1: 'Churned'})
+            fig = px.bar(churn_dist, x='Exited', y='count', color='Exited',
+                        title="Overall Churn Distribution")
+            st.plotly_chart(fig, use_container_width=True)
+    
+    # Tab 2: Geographic Analysis
+    with tab2:
+        st.subheader("🌍 Geographic Churn Analysis")
+        
+        st.markdown("""
+        ### 🔍 Key Insights
+        - **Germany** shows the highest churn-risk profile
+        - **France** demonstrates strong retention despite largest customer base
+        - **Spain** occupies a middle position in churn risk
+        """)
+        
+        c1, c2 = st.columns([1, 1])
+        
+        with c1:
+            churn_by_geo = filtered.groupby("Geography")["Exited"].value_counts().reset_index()
+            churn_by_geo['Exited'] = churn_by_geo['Exited'].map({0: "Retained", 1: "Churned"})
+            fig = px.bar(
+                churn_by_geo, x="Geography", y="count", color="Exited",
+                barmode="group",
+                title="Customer Churn Distribution by Geography"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c2:
+            churn_rate_geo = round(
+                filtered.groupby("Geography")["Exited"].mean() * 100, 2
+            ).reset_index()
+            churn_rate_geo.columns = ["Geography", "Churn Rate (%)"]
+            fig = px.bar(
+                churn_rate_geo, x="Geography", y="Churn Rate (%)",
+                color="Geography", title="Churn Rate (%) by Geography"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with st.expander("💡 Business Implications"):
+            st.markdown("""
+            **🎯 Priority Action: Focus retention strategy on Germany**
+            - Targeted campaigns needed
+            - Customer feedback analysis required
+            - Competitor benchmarking recommended
+            
+            **📌 France:** Identify why churn is low → replicate in other regions
+            
+            **📌 Spain:** Early intervention can prevent becoming Germany
+            """)
+    
+    # Tab 3: Demographic Analysis
+    with tab3:
+        st.subheader("🚻 Demographic Churn Analysis")
+        
+        c1, c2 = st.columns([1, 1])
+        
+        with c1:
+            st.markdown("### Gender Analysis")
+            churn_by_gender = filtered.groupby(['Gender', 'Exited']).size().reset_index(name='count')
+            churn_by_gender['Exited'] = churn_by_gender['Exited'].map({0: "Retained", 1: "Churned"})
+            fig = px.bar(
+                churn_by_gender, x="Gender", y="count", color="Exited",
+                barmode="group",
+                title="Customer Churn Distribution by Gender"
+            )
+            st.plotly_chart(fig, width='stretch')
+            
+            with st.expander("💡 Key Insights"):
+                st.markdown("""
+                - **Female customers** have significantly higher churn proportion
+                - **Male customers** show better retention rates
+                - 🎯 Personalized retention strategy needed for female segment
+                """)
+        
+        with c2:
+            st.markdown("### Age Group Analysis")
+            churn_by_age = filtered.groupby('Age_Group', observed=True)['Exited'].value_counts().reset_index()
+            churn_by_age['Exited'] = churn_by_age['Exited'].map({0: "Retained", 1: "Churned"})
+            fig = px.bar(
+                churn_by_age, x="Age_Group", y="count", color="Exited",
+                barmode="group",
+                title="Customer Churn Distribution by Age Group"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("💡 Key Insights"):
+                st.markdown("""
+                - **36-60 age group** shows highest churn risk 🔥
+                - **26-35 segment** has largest base but low churn ✅
+                - Churn sharply increases from age 36 onwards
+                """)
+        
+        st.markdown("---")
+        st.markdown("### 🔗 Gender × Geography Interaction")
+        
+        churn_by_gender_geo = filtered.groupby(["Geography", "Gender"])["Exited"].value_counts().reset_index()
+        churn_by_gender_geo['Exited'] = churn_by_gender_geo['Exited'].map({0: "Retained", 1: "Churned"})
+        fig = px.bar(
+            churn_by_gender_geo, x="Gender", y="count", color="Exited",
+            facet_col="Geography", barmode="group",
+            title="Churn Distribution by Gender Across Geographies"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        with st.expander("💡 Critical Finding"):
+            st.markdown("""
+            **🚨 Female customers in Germany might be the highest-risk segment**
+            - Combines two strong churn drivers
+            - Highest priority for targeted retention campaigns
+            """)
+    
+    # Tab 4: Engagement Analysis
+    with tab4:
+        st.subheader("⚡ Customer Engagement & Behavior Analysis")
+        
+        c1, c2 = st.columns([1, 1])
+        
+        with c1:
+            st.markdown("### Tenure Analysis")
+            churn_by_tenure = filtered.groupby("Tenure_Group", observed=True)["Exited"].value_counts().reset_index()
+            churn_by_tenure['Exited'] = churn_by_tenure['Exited'].map({0: "Retained", 1: "Churned"})
+            fig = px.bar(
+                churn_by_tenure, x="Tenure_Group", y="count", color="Exited",
+                barmode="group",
+                title="Customer Churn Distribution by Tenure Group"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("💡 Key Insights"):
+                st.markdown("""
+                - **0-2 years** shows highest churn count 🚨
+                - Churn gradually decreases with tenure
+                - 🎯 Improve onboarding to reduce early churn
+                """)
+        
+        with c2:
+            st.markdown("### Activity Status Analysis")
+            churn_by_active = filtered.groupby("IsActiveMember")["Exited"].value_counts().reset_index()
+            churn_by_active['IsActiveMember'] = churn_by_active['IsActiveMember'].map({0: "Not Active", 1: "Active"})
+            churn_by_active['Exited'] = churn_by_active['Exited'].map({0: "Retained", 1: "Churned"})
+            fig = px.bar(
+                churn_by_active, x="IsActiveMember", y="count", color="Exited",
+                barmode="group",
+                title="Customer Churn by Activity Status"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("💡 Key Insights"):
+                st.markdown("""
+                - **Inactive customers** churn significantly more 🚨
+                - Active members show much better retention ✅
+                - 🎯 Biggest opportunity = reactivation strategy
+                """)
+    
+    # Tab 5: Products & Balance
+    with tab5:
+        st.subheader("💳 Product Usage & Balance Analysis")
+        
+        c1, c2 = st.columns([1, 1])
+        
+        with c1:
+            st.markdown("### Number of Products")
+            churn_rate_by_qty = round(
+                filtered.groupby("NumOfProducts")["Exited"].mean() * 100, 2
+            ).reset_index()
+            churn_rate_by_qty.columns = ["NumOfProducts", "Churn Rate"]
+            fig = px.bar(
+                churn_rate_by_qty, x="NumOfProducts", y="Churn Rate",
+                color="NumOfProducts",
+                title="Churn Rate (%) by Number of Products Owned"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("💡 Critical Finding"):
+                st.markdown("""
+                - **2 products** = optimal engagement level (~6% churn) ✅
+                - **1 product** = high risk (~35% churn) 🚨
+                - **3-4 products** = extremely high churn (~87%) 🚨🚨
+                - 🎯 Cross-sell to 2 products is strongest retention lever
+                """)
+        
+        with c2:
+            st.markdown("### Account Balance")
+            avg_balance = filtered.groupby("Exited")["Balance"].mean().reset_index()
+            avg_balance['Exited'] = avg_balance['Exited'].map({0: 'Retained', 1: 'Churned'})
+            fig = px.bar(
+                avg_balance, x="Exited", y="Balance", color="Exited",
+                title="Average Account Balance: Churned vs Retained"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+            
+            with st.expander("💡 Critical Insight"):
+                st.markdown("""
+                - **Churned customers** have ~40% higher average balance 💰
+                - **High-value customers are leaving** 🔥
+                - This is revenue-heavy churn = maximum impact
+                - 🎯 Protect high-value customers with premium services
+                """)
+        
+        st.markdown("---")
+        churn_by_qty = filtered.groupby("NumOfProducts")["Exited"].value_counts().reset_index()
+        churn_by_qty['Exited'] = churn_by_qty['Exited'].map({0: "Retained", 1: "Churned"})
+        fig = px.bar(
+            churn_by_qty, x="NumOfProducts", y="count", color="Exited",
+            barmode="group",
+            title="Churn Distribution by Number of Products"
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("### Credit Score Analysis")
+        c3, c4 = st.columns([1, 1])
+        
+        with c3:
+            churn_by_score = filtered.groupby("Cred_Score_Segment", observed=True)["Exited"].value_counts().reset_index()
+            churn_by_score['Exited'] = churn_by_score['Exited'].map({0: "Retained", 1: "Churned"})
+            fig = px.bar(
+                churn_by_score, x="Cred_Score_Segment", y="count", color="Exited",
+                barmode="group",
+                title="Churn Distribution by Credit Score Segment"
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        
+        with c4:
+            with st.expander("💡 Key Insights"):
+                st.markdown("""
+                - **Low credit score** customers are NOT main contributors to churn
+                - **Premium customers** also show significant churn
+                - Even financially strong customers are leaving
+                - Credit score is weak individual predictor
+                """)
+    
+    # Tab 6: Correlation Analysis
+    with tab6:
+        st.subheader("📊 Correlation Analysis")
+        
+        st.markdown("""
+        ### 🔍 Feature Correlation with Customer Churn
+        
+        This heatmap shows the correlation between all numerical features and customer churn (Exited).
+        
+        **How to interpret:**
+        - **Positive values (red)** → Higher values correlate with churn
+        - **Negative values (blue)** → Higher values correlate with retention
+        - **Values near 0** → Weak relationship with churn
+        """)
+        
+        numerical_columns = filtered.select_dtypes(exclude=["object", "category"]).columns
+        corr_matrix = filtered[numerical_columns].corr()
+        
+        fig = px.imshow(
+            corr_matrix, labels=dict(color="Correlation"),
+            title="Correlation Heatmap of Numerical Features",
+            color_continuous_scale="RdBu_r", color_continuous_midpoint=0
+        )
+        st.plotly_chart(fig, use_container_width=True)
+        
+        st.markdown("---")
+        st.markdown("### 🔍 Key Correlation Insights")
+        
+        if 'Exited' in corr_matrix.columns:
+            churn_corr = corr_matrix['Exited'].sort_values(ascending=False)
+            
+            col1, col2, col3 = st.columns(3)
+            
+            with col1:
+                st.markdown("#### 🔥 Strong Churn Drivers")
+                st.markdown("""
+                <div style="background-color: #2C3E50; padding: 15px; border-radius: 8px; border-left: 4px solid #FF4444; color: #FFFFFF;">
+                **Age** → 0.345<br>Strongest predictor
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col2:
+                st.markdown("#### ⚡ Moderate Factors")
+                st.markdown("""
+                <div style="background-color: #2C3E50; padding: 15px; border-radius: 8px; border-left: 4px solid #FF9900; color: #FFFFFF;">
+                **IsActiveMember** → -0.210<br>**NumOfProducts** → -0.210
+                </div>
+                """, unsafe_allow_html=True)
+            
+            with col3:
+                st.markdown("#### ⚪ Weak Predictors")
+                st.markdown("""
+                <div style="background-color: #2C3E50; padding: 15px; border-radius: 8px; border-left: 4px solid #4488FF; color: #FFFFFF;">
+                **CreditScore, Gender**<br>**HasCrCard** → Near 0
+                </div>
+                """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        st.markdown("### 💡 Key Takeaways")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.success("""
+            ✅ **Strong Retention Factors**
+            - Active membership status
+            - Greater product engagement
+            - Longer tenure in bank
+            - Regular account usage
+            """)
+        
+        with col2:
+            st.error("""
+            ❌ **Major Churn Risk Factors**
+            - Advanced age (45+)
+            - Inactive account status
+            - Few products (<2)
+            - Recent customers (<2 years)
+            """)
+    
+    # Tab 7: Strategy
+    with tab7:
+        st.subheader("📋 Customer Retention Strategy & Recommendations")
+        
+        st.markdown("### 1️⃣ Which Customers Should Be Targeted for Retention?")
+        
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **🔥 Highest-Risk Segments:**
+            - Inactive customers
+            - High-balance customers (40% higher balance)
+            - Middle-aged (36–60 years)
+            - New customers (0–2 years tenure)
+            - Female customers in Germany 🚨
+            - Customers with 1 or 3+ products
+            """)
+        
+        with col2:
+            st.markdown("""
+            **💡 Why Target These?**
+            - High probability of churn
+            - Significant revenue impact
+            - Addressable through targeted campaigns
+            - Clear behavioral patterns
+            """)
+        
+        st.markdown("---")
+        st.markdown("### 2️⃣ What Strategies Would Reduce Churn?")
+        
+        col1, col2, col3 = st.columns(3)
+        
+        with col1:
+            st.markdown("""
+            **🎯 Customer Engagement**
+            - App/email reminders
+            - Personalized nudges
+            - Re-engagement campaigns
+            
+            *Inactivity is strongest driver*
+            """)
+        
+        with col2:
+            st.markdown("""
+            **🔁 Cross-Selling to 2 Products**
+            - Bundle offers
+            - Product recommendations
+            - Discounts on 2nd product
+            
+            *Most loyal segment*
+            """)
+        
+        with col3:
+            st.markdown("""
+            **⭐ Premium VIP Retention**
+            - Dedicated support
+            - Wealth management offers
+            - Exclusive benefits
+            
+            *Prevents high revenue loss*
+            """)
+        
+        st.markdown("---")
+        col1, col2 = st.columns(2)
+        
+        with col1:
+            st.markdown("""
+            **🚀 Improve Early Onboarding**
+            - Guided onboarding process
+            - Educational content
+            - Early engagement offers
+            
+            *Most churn in first 2 years*
+            """)
+        
+        with col2:
+            st.markdown("""
+            **📋 Activity-Based Targeting**
+            - Identify inactive users
+            - Personalized reactivation events
+            - Benefit-focused communication
+            
+            *Highest churn correlation*
+            """)
+        
+        st.markdown("---")
+        st.markdown("### 3️⃣ Personalized Marketing Target Segment")
+        
+        st.info("""
+        **🟢 High-Value & High-Risk Customers** (PRIORITY SEGMENT)
+        
+        Characteristics:
+        - High account balance
+        - Inactive engagement status
+        - Age 36–60
+        - Germany (especially females)
+        
+        Why: Highest churn probability + highest revenue impact + most actionable
+        """)
+        
+        st.markdown("---")
+        st.markdown("### ⭐ Key Takeaway")
+        
+        st.success("""
+        **Customer *behavior* is a stronger predictor of churn than demographics alone.**
+        
+        **Priority Ranking:**
+        1. 🔥 **Behavioral Features** (Activity, Product Usage) → Strongest drivers
+        2. ⭐ **Financial Metrics** (Balance, Tenure) → Important but not sufficient
+        3. ⚪ **Demographics** (Gender, Geography) → Moderate impact
+        """)
 
 if page == "Churn Predictor":
     st.title("🏦 Bank Customer Churn Risk Assessment Tool")
@@ -507,6 +1043,9 @@ elif page == "Model Performance":
         }
     )
     st.dataframe(report_df, use_container_width=True)
+
+    st.markdown("---")
+
 
     st.markdown("---")
 
