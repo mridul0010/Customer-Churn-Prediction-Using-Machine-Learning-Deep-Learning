@@ -42,7 +42,7 @@
 
 This repository implements a **customer churn prediction system** for a banking dataset using a **comparative machine learning approach**. Multiple models were trained and evaluated — **XGBoost was selected as the final production model**, while an **Artificial Neural Network (ANN)** was implemented as a benchmark to demonstrate deep learning understanding.
 
-A **Streamlit web app** is provided for interactive use, allowing users to input customer details and receive a real-time churn risk assessment.
+A **Streamlit web app** is provided for interactive use, allowing users to input customer details and receive a real-time churn risk assessment. It now includes an **analytics dashboard** and a **model performance** page with evaluation metrics and visualizations (ROC curve, confusion matrix) to track model behavior.
 
 > **Philosophy:** This project emphasizes _model comparison, data-driven model selection, interpretability, and deployment readiness_ — rather than focusing on accuracy alone.
 
@@ -153,17 +153,19 @@ The app computes these directly from the saved pipeline using an **80/20 stratif
 
 | Metric | Score | Description |
 |---|---|---|
-| **Accuracy** | 86.09% | Overall prediction correctness |
-| **Precision** | 65.27% | Proportion of correct positive predictions |
-| **Recall** | 73.24% | Ability to identify churned customers |
-| **F1-Score** | 69.02% | Harmonic mean of precision and recall |
-| **AUC-ROC** | 90.53% | Overall model discriminative ability |
-| **Best Threshold** | 0.32 | Probability cutoff selected to maximize F1-score |
+| **Accuracy** | 84.80% | Overall prediction correctness |
+| **Precision** | 62.70% | Proportion of correct positive predictions |
+| **Recall** | 70.20% | Ability to identify churned customers |
+| **F1-Score** | 66.20% | Harmonic mean of precision and recall |
+| **AUC-ROC** | 88.80% | Overall model discriminative ability |
+| **Best Threshold** | 0.515 | Probability cutoff selected to maximize F1-score |
+
+<img width="1896" alt="Model Performance &amp; Evaluation" src="https://github.com/user-attachments/assets/810330f3-5279-4b3e-a712-98d38a76eb8f" />
 
 ### F1-Optimized Threshold Strategy
 
-The model uses a **dynamically optimized decision threshold (0.32)** to maximize F1-score on validation data.
-Predictions with churn probability **≥ 0.32** are classified as churn, improving the precision-recall balance for this imbalanced problem.
+The model uses a **dynamically optimized decision threshold (0.515)** to maximize F1-score on validation data.
+Predictions with churn probability **≥ 0.515** are classified as churn, improving the precision-recall balance for this imbalanced problem.
 
 > ⚠️ Given the imbalanced nature of churn prediction, **accuracy was not used as the sole decision metric**. The model prioritizes recall and F1-score to ensure effective identification of at-risk customers.
 
