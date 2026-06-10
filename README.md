@@ -65,14 +65,24 @@ Customer churn significantly impacts business revenue. The objective is to **pre
 ```
 Customer-Churn-Prediction/
 │
-├── Model_Selection.ipynb            # Model comparison & selection notebook
-├── Churn_Modelling_Training.ipynb   # Model training notebook (incl. ANN)
-├── train.csv                        # Dataset used for training
-├── pipeline.pkl                     # Preprocessing + Model pipeline
-├── app.py                           # Streamlit web application
-├── requirements.txt                 # Project dependencies
-├── LICENSE                          # MIT License
-└── README.md                        # Project documentation
+├── notebook/                                    # Jupyter notebooks for exploration & modeling
+│   ├── 0_Analytics.ipynb                       # Data analytics & exploratory data analysis
+│   ├── 1_Model_Selection.ipynb                 # Model comparison & selection notebook
+│   └── 2_Churn_Modelling_Training.ipynb        # Model training notebook (incl. ANN)
+│
+├── data/                                        # Data directory
+│   └── train.csv                               # Dataset used for training
+│
+├── model/                                       # Model directory
+│   └── pipeline.pkl                            # Preprocessing + Model pipeline
+│
+├── app/                                         # Application package
+│   └── app.py                                  # Streamlit web application (module)
+│
+├── app.py                                       # Main Streamlit entry point
+├── requirements.txt                            # Project dependencies
+├── LICENSE                                     # MIT License
+└── README.md                                   # Project documentation
 ```
 
 ---
