@@ -3,12 +3,25 @@ import pandas as pd
 import numpy as np
 import pickle
 import os
+from pathlib import Path
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.express as px
 import shap
 from xgboost import XGBClassifier  # Required for unpickling the XGBClassifier inside the pipeline
 from sklearn.base import BaseEstimator, TransformerMixin
+
+# Determine the base directory (handles both local and Streamlit Cloud execution)
+if os.path.exists(os.path.join(os.getcwd(), 'app')):
+    # Running from root directory (local or Streamlit Cloud)
+    BASE_DIR = os.getcwd()
+else:
+    # Running from app directory
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# Define file paths
+MODEL_PATH = os.path.join(BASE_DIR, 'model', 'pipeline.pkl')
+DATA_PATH = os.path.join(BASE_DIR, 'data', 'train.csv')
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import OrdinalEncoder
 from sklearn.metrics import (
@@ -70,7 +83,7 @@ def load_pipeline():
     """Loads the trained machine learning pipeline."""
     try:
         # Load the complete pipeline (Preprocessor + XGBoost Model)
-        with open('../model/pipeline.pkl', 'rb') as file:
+        with open(MODEL_PATH, 'rb') as file:
             pipeline = pickle.load(file)
             
         # Robustly handle any unexpected feature mappings when making a single row prediction
@@ -94,10 +107,10 @@ pipeline = load_pipeline()
 @st.cache_data
 def load_dataset():
     try:
-        if not os.path.exists("../data/train.csv"):
+        if not os.path.exists(DATA_PATH):
             st.error("❌ Error: 'train.csv' file not found in the application directory.")
             st.stop()
-        df = pd.read_csv("../data/train.csv")
+        df = pd.read_csv(DATA_PATH)
         if df.empty:
             st.error("❌ Error: 'train.csv' is empty.")
             st.stop()
@@ -203,7 +216,7 @@ st.set_page_config(
 
 def validate_required_files():
     """Check if all required files exist on startup"""
-    required_files = {"train.csv": "../data/train.csv", "pipeline.pkl": "../model/pipeline.pkl"}
+    required_files = {"train.csv": DATA_PATH, "pipeline.pkl": MODEL_PATH}
     missing_files = [name for name, path in required_files.items() if not os.path.exists(path)]
     
     if missing_files:
@@ -213,11 +226,11 @@ def validate_required_files():
         The following files are required but not found:
         {', '.join(missing_files)}
         
-        **Please ensure these files are in the correct directories:**
-        - `../data/train.csv` - Training dataset for analytics and model evaluation
-        - `../model/pipeline.pkl` - Trained XGBoost model pipeline
+        **Expected file locations:**
+        - `data/train.csv` - Training dataset for analytics and model evaluation
+        - `model/pipeline.pkl` - Trained XGBoost model pipeline
         
-        **Current working directory:** {os.getcwd()}
+        **Base directory:** {BASE_DIR}
         """)
         st.stop()
 
@@ -229,10 +242,10 @@ validate_required_files()
 @st.cache_data
 def load_analysis_data():
     try:
-        if not os.path.exists("../data/train.csv"):
+        if not os.path.exists(DATA_PATH):
             st.error("❌ Error: 'train.csv' file not found in the application directory.")
             st.stop()
-        df = pd.read_csv("../data/train.csv")
+        df = pd.read_csv(DATA_PATH)
         if df.empty:
             st.error("❌ Error: 'train.csv' is empty.")
             st.stop()
