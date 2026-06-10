@@ -78,8 +78,7 @@ Customer-Churn-Prediction/
 │
 ├── app/                                         # Application package
 │   └── app.py                                  # Streamlit web application (module)
-│
-├── app.py                                       # Main Streamlit entry point
+|
 ├── requirements.txt                            # Project dependencies
 ├── LICENSE                                     # MIT License
 └── README.md                                   # Project documentation
