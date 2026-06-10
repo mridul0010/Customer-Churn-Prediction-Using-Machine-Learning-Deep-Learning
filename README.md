@@ -115,7 +115,7 @@ XGBoost was selected because it:
 ## 📊 Analytics Dashboard
 
 The live app includes a **Data Analytics** page that helps explore churn patterns before making predictions. It mirrors the insights visible at
-[customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app](https://bank-customer-churn-predictionn.streamlit.app/) and is driven directly from `train.csv`.
+[bank-customer-churn-predictionn.streamlit.app](https://bank-customer-churn-predictionn.streamlit.app/) and is driven directly from `train.csv`.
 
 ### Filters & KPI Tiles
 
@@ -235,7 +235,7 @@ This highlights the importance of **interpretability in real-world ML systems**.
 
 4. **Or try the live demo**
 
-   🔗 [https://customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app/](https://customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app/)
+   🔗 [https://bank-customer-churn-predictionn.streamlit.app/](https://bank-customer-churn-predictionn.streamlit.app/)
 
 ---
 
