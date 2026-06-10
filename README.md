@@ -12,7 +12,7 @@
 
 **Predict bank customer churn with an end-to-end ML pipeline — from data preprocessing and model comparison to SHAP-based explainability and interactive deployment.**
 
-[Live Demo](https://customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app/) · [Report Bug](https://github.com/mridul0010/Customer-Churn-Prediction-Using-Machine-Learning-Deep-Learning/issues) · [Request Feature](https://github.com/mridul0010/Customer-Churn-Prediction-Using-Machine-Learning-Deep-Learning/issues)
+[Live Demo](https://bank-customer-churn-predictionn.streamlit.app/) · [Report Bug](https://github.com/mridul0010/Customer-Churn-Prediction-Using-Machine-Learning-Deep-Learning/issues) · [Request Feature](https://github.com/mridul0010/Customer-Churn-Prediction-Using-Machine-Learning-Deep-Learning/issues)
 
 </div>
 
@@ -115,7 +115,7 @@ XGBoost was selected because it:
 ## 📊 Analytics Dashboard
 
 The live app includes a **Data Analytics** page that helps explore churn patterns before making predictions. It mirrors the insights visible at
-[customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app](https://customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app/) and is driven directly from `train.csv`.
+[customer-churn-prediction-using-machine-learning-deep-learning.streamlit.app](https://bank-customer-churn-predictionn.streamlit.app/) and is driven directly from `train.csv`.
 
 ### Filters & KPI Tiles
 
